@@ -27,15 +27,23 @@ def load_esa_data():
             df = df.dropna(subset=['Project Title'])
             df = df[df['Project Title'].astype(str).str.strip() != '']
 
-        # Fix District Commas & Missing
+        # --- STRICT 30 DISTRICTS RULE ---
         if 'District' in df.columns:
             df['District'] = df['District'].astype(str).str.replace(',', ', ')
             df = df.assign(District=df['District'].str.split(',')).explode('District')
             df['District'] = df['District'].astype(str).apply(lambda x: x.title().strip() if pd.notna(x) and str(x).strip() != '' else "Unknown")
+            
+            rwanda_districts = [
+                "Bugesera", "Gatsibo", "Kayonza", "Kirehe", "Ngoma", "Nyagatare", "Rwamagana", 
+                "Gasabo", "Kicukiro", "Nyarugenge", "Burera", "Gakenke", "Gicumbi", "Musanze", "Rulindo", 
+                "Gisagara", "Huye", "Kamonyi", "Muhanga", "Nyamagabe", "Nyanza", "Nyaruguru", "Ruhango", 
+                "Karongi", "Ngororero", "Nyabihu", "Nyamasheke", "Rubavu", "Rusizi", "Rutsiro"
+            ]
+            # Keep ONLY the 30 official districts
+            df = df[df['District'].isin(rwanda_districts)]
         else:
             df['District'] = "Unknown"
 
-        # Fix Category Commas & Missing
         if 'Project Category' in df.columns:
             df['Project Category'] = df['Project Category'].astype(str).str.replace(',', ', ')
             df = df.assign(**{'Project Category': df['Project Category'].str.split(',')}).explode('Project Category')
@@ -122,7 +130,6 @@ def live_dashboard():
         st.markdown("---")
         st.subheader("Project Data Table")
         table_header_col1, table_header_col2 = st.columns([3, 1])
-        
         with table_header_col1:
             st.write(f"Showing **{len(df_filtered)}** records.")
         with table_header_col2:
