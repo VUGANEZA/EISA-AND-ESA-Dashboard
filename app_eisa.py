@@ -27,23 +27,19 @@ def load_eisa_data():
             df = df.dropna(subset=['Project Title'])
             df = df[df['Project Title'].astype(str).str.strip() != '']
 
+        # Fix District Commas & Missing
         if 'District' in df.columns:
             df['District'] = df['District'].astype(str).str.replace(',', ', ')
             df = df.assign(District=df['District'].str.split(',')).explode('District')
             df['District'] = df['District'].astype(str).apply(lambda x: x.title().strip() if pd.notna(x) and str(x).strip() != '' else "Unknown")
-            
-            rwanda_districts = [
-                "Bugesera", "Gatsibo", "Kayonza", "Kirehe", "Ngoma", "Nyagatare", "Rwamagana", 
-                "Gasabo", "Kicukiro", "Nyarugenge", "Burera", "Gakenke", "Gicumbi", "Musanze", "Rulindo", 
-                "Gisagara", "Huye", "Kamonyi", "Muhanga", "Nyamagabe", "Nyanza", "Nyaruguru", "Ruhango", 
-                "Karongi", "Ngororero", "Nyabihu", "Nyamasheke", "Rubavu", "Rusizi", "Rutsiro"
-            ]
-            df = df[df['District'].isin(rwanda_districts)]
         else:
             df['District'] = "Unknown"
 
+        # Fix Category Commas & Missing
         if 'Project Category' in df.columns:
-            df['Project Category'] = df['Project Category'].astype(str).apply(lambda x: str(x).strip() if pd.notna(x) and str(x).strip() != '' else "Unknown")
+            df['Project Category'] = df['Project Category'].astype(str).str.replace(',', ', ')
+            df = df.assign(**{'Project Category': df['Project Category'].str.split(',')}).explode('Project Category')
+            df['Project Category'] = df['Project Category'].astype(str).apply(lambda x: str(x).title().strip() if pd.notna(x) and str(x).strip() != '' else "Unknown")
         else:
             df['Project Category'] = "Unknown"
 
@@ -64,7 +60,6 @@ def live_dashboard():
 
     if df_eisa is not None:
         st.sidebar.header("EISA Controls")
-        
         st.sidebar.button("🔄 Reset EISA Filters", on_click=clear_filters, use_container_width=True)
 
         if st.session_state.reset_eisa:
@@ -109,6 +104,7 @@ def live_dashboard():
         st.markdown("---")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total Projects", len(df_filtered))
+        
         if 'Developer name' in df_filtered.columns:
             col2.metric("Developers", df_filtered[df_filtered['Developer name'] != 'Unknown']['Developer name'].nunique())
         if 'District' in df_filtered.columns:
@@ -125,8 +121,7 @@ def live_dashboard():
             if len(chart_data) > 0:
                 district_counts = chart_data['District'].value_counts().head(15).reset_index()
                 district_counts.columns = ['District', 'Count']
-                # ADDED: color='District' and a distinct color sequence
-                fig_district = px.bar(district_counts, x='District', y='Count', title="Top 15 Districts by Project Count", text='Count', color='District', color_discrete_sequence=px.colors.qualitative.Plotly)
+                fig_district = px.bar(district_counts, x='District', y='Count', title="Top 15 Districts by Project Count", text='Count', color='District')
                 fig_district.update_layout(xaxis={'categoryorder':'total descending'}, showlegend=False)
                 fig_district.update_xaxes(tickangle=45)
                 st.plotly_chart(fig_district, use_container_width=True)
@@ -136,8 +131,7 @@ def live_dashboard():
             if len(chart_data) > 0:
                 top_cats = chart_data['Project Category'].value_counts().head(8).index
                 df_pie = chart_data[chart_data['Project Category'].isin(top_cats)]
-                # ADDED: distinct color sequence for the pie chart
-                fig_category = px.pie(df_pie, names='Project Category', title="Top 8 Categories", hole=0.4, color_discrete_sequence=px.colors.qualitative.Plotly)
+                fig_category = px.pie(df_pie, names='Project Category', title="Top 8 Categories", hole=0.4)
                 fig_category.update_traces(textposition='inside', textinfo='percent')
                 st.plotly_chart(fig_category, use_container_width=True)
 
